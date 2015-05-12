@@ -74,7 +74,16 @@ void loop() {
       tok = strtok(nmea, ",");
 
       if (strcmp(tok,"GNRMC") == 0){
-	Serial.print("RMC FOUND");
+	char * utc = strtok(NULL,",");
+	char * status = strtok(NULL",");
+	char * lat = strtok(NULL,",");  // ddmm.mmm
+	char * lat_dir = strtok(NULL,","); // N/S (north/south)
+	char * lon = strtok(NULL,",");  // dddmm.mmm
+	char * lon_dir = strtok(NULL,","); // E/W (east/west)
+	char * sog = strtok(NULL,","); // Knots
+	char * cog = strtok(NULL,","); // degrees
+	char * date = strtok(NULL,","); // ddmmyy
+	char * mag_var = strtok(NULL,","); // Magnetic deviation
       }
       /*
       while (tok != NULL)
