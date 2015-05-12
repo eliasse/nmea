@@ -1,0 +1,71 @@
+#include "ublox.h"
+#include <Arduino.h>
+
+char separator = ',';
+char start_char = '$';
+char stop_char = '*';
+char msg_name[6];
+
+
+char buf;
+char long_buf[100];
+
+namespace NMEA
+{ 
+  char RMC[] = "GPRMC";
+}
+
+struct RMC {
+  char fix_time[];
+  char nav_rec_warn; // Navigation receiver warning
+  char lat[]; // 
+  char lon[];
+  char sog[]; // speed over ground knots
+  char cog[]; // course [deg]
+  char date_of_fix[]; // ddmmyy
+  char mag_var[];     // magnetic variation
+  char mag_var_dir;   // direction of magnetic variation
+  char checksum[2];  
+} rmc;
+
+void setup() {
+  Serial.begin(9600);
+  Serial2.begin(9600);
+}
+
+void loop() {
+  while (Serial2.available()){
+    
+    String str;
+    str = Serial2.readStringUntil('*');
+    char crc[2];
+    Serial2.readBytes(crc,2);
+    
+    if (str.substring(2,7) == "GNRMC") {
+      Serial.print(str);
+      }
+  }
+   
+    /*buf = Serial2.read();
+
+    while (Serial2.available()) {
+
+      if (buf == start_char) {
+	Serial2.readBytesUntil(separator,msg_name,10);
+	Serial.println(msg_name);
+	Serial2.readBytesUntil(separator,rmc.fix_time,10);
+	Serial.println(rmc.fix_time);
+	Serial2.readBytes(long_buf,80);	
+      }
+      else { Serial2.readBytes(long_buf,80); }
+    
+      } 
+  }
+  /*
+  while (Serial2.available()) {
+    buf = Serial2.read();
+    Serial.print(buf);
+  }
+  */
+  delay(500);
+}
