@@ -1,6 +1,8 @@
 #include "ublox.h"
 #include <Arduino.h>
 
+const float pi = 3.141592653589793;
+
 char separator = ',';
 char start_char = '$';
 char stop_char = '*';
@@ -74,16 +76,59 @@ void loop() {
       tok = strtok(nmea, ",");
 
       if (strcmp(tok,"GNRMC") == 0){
-	char * utc = strtok(NULL,",");
-	char * status = strtok(NULL",");
-	char * lat = strtok(NULL,",");  // ddmm.mmm
-	char * lat_dir = strtok(NULL,","); // N/S (north/south)
-	char * lon = strtok(NULL,",");  // dddmm.mmm
-	char * lon_dir = strtok(NULL,","); // E/W (east/west)
-	char * sog = strtok(NULL,","); // Knots
-	char * cog = strtok(NULL,","); // degrees
-	char * date = strtok(NULL,","); // ddmmyy
-	char * mag_var = strtok(NULL,","); // Magnetic deviation
+	// Extract elements
+	char * utc_c = strtok(NULL,",");
+	char * status_c = strtok(NULL,",");
+	char * lat_c = strtok(NULL,",");  // ddmm.mmm
+	char * lat_dir_c = strtok(NULL,","); // N/S (north/south)
+	char * lon_c = strtok(NULL,",");  // dddmm.mmm
+	char * lon_dir_c = strtok(NULL,","); // E/W (east/west)
+	char * sog_c = strtok(NULL,","); // Knots
+	char * cog_c = strtok(NULL,","); // degrees
+	char * date_c = strtok(NULL,","); // ddmmyy
+	char * mag_var_c = strtok(NULL,","); // Magnetic deviation
+
+	// Convert data to numerical values
+	int utc = atoi(utc_c);
+	
+	// Latitude degrees
+	//Serial.println(lat_c);
+	char lat_deg_c[3];
+	strncpy(lat_deg_c,lat_c,2);
+	lat_deg_c[2] = '\0';
+	float lat_deg = atof(lat_deg_c);
+	//Serial.println(lat_deg);
+	
+	// Latitude minutes
+	char lat_min_c[9];
+        strcpy(lat_min_c, lat_c+=2);
+	//Serial.println(lat_min_c);
+	float lat_min = atof(lat_min_c);
+	//Serial.println(lat_min,5);
+
+	// Convert Latitude position to radians
+	lat_deg = lat_deg + (lat_min/60.f);
+	//Serial.println(lat_deg,4);
+	float lat = toRad(lat_deg);
+	//Serial.println(lat,6);
+
+	// Longitude
+	Serial.println(lon_c);
+	char lon_deg_c[4];
+	strncpy(lon_deg_c,lon_c,3);
+	lon_deg_c[3] = '\0';
+	float lon_deg = atof(lon_deg_c);
+	
+	// Longitude minutes
+	char lon_min_c[9];
+	strcpy(lon_min_c, lon_c+=3);
+	float lon_min = atof(lon_min_c);
+	
+	// Sum up and convert longitude into radians
+	lon_deg = lon_deg + (lon_min / 60.f);
+	Serial.println(lon_deg,6);
+	float lon = toRad(lon_deg);
+	Serial.println(lon,6);
       }
       /*
       while (tok != NULL)
@@ -158,4 +203,12 @@ int checksum(char *s) {
         c ^= *s++;
  
     return c;
+}
+
+inline float toRad(float x){
+  return (x * (pi/180.f));
+}
+
+inline float toDeg(float x){
+  return (x * (180.f/pi));
 }

@@ -8,7 +8,13 @@ void setup();
 void loop();
 
 int checksum(char *s);
+
+inline float toRad(float x);
+
+inline float toDeg(float x);
 #line 4 "gps.ino"
+const float pi = 3.141592653589793;
+
 char separator = ',';
 char start_char = '$';
 char stop_char = '*';
@@ -82,7 +88,59 @@ char * tok;
 tok = strtok(nmea, ",");
 
 if (strcmp(tok,"GNRMC") == 0){
-Serial.print("RMC FOUND");
+
+char * utc_c = strtok(NULL,",");
+char * status_c = strtok(NULL,",");
+char * lat_c = strtok(NULL,",");
+char * lat_dir_c = strtok(NULL,",");
+char * lon_c = strtok(NULL,",");
+char * lon_dir_c = strtok(NULL,",");
+char * sog_c = strtok(NULL,",");
+char * cog_c = strtok(NULL,",");
+char * date_c = strtok(NULL,",");
+char * mag_var_c = strtok(NULL,",");
+
+
+int utc = atoi(utc_c);
+
+
+
+char lat_deg_c[3];
+strncpy(lat_deg_c,lat_c,2);
+lat_deg_c[2] = '\0';
+float lat_deg = atof(lat_deg_c);
+
+
+
+char lat_min_c[9];
+strcpy(lat_min_c, lat_c+=2);
+
+float lat_min = atof(lat_min_c);
+
+
+
+lat_deg = lat_deg + (lat_min/60.f);
+
+float lat = toRad(lat_deg);
+
+
+
+Serial.println(lon_c);
+char lon_deg_c[4];
+strncpy(lon_deg_c,lon_c,3);
+lon_deg_c[3] = '\0';
+float lon_deg = atof(lon_deg_c);
+
+
+char lon_min_c[9];
+strcpy(lon_min_c, lon_c+=3);
+float lon_min = atof(lon_min_c);
+
+
+lon_deg = lon_deg + (lon_min / 60.f);
+Serial.println(lon_deg,6);
+float lon = toRad(lon_deg);
+Serial.println(lon,6);
 }
 
 
@@ -157,4 +215,12 @@ while(*s)
 c ^= *s++;
 
 return c;
+}
+
+inline float toRad(float x){
+return (x * (pi/180.f));
+}
+
+inline float toDeg(float x){
+return (x * (180.f/pi));
 }
