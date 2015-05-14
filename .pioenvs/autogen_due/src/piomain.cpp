@@ -38,18 +38,31 @@ GGA,
 VTG
 };
 
+int utc;
+char * utc_c;
+char * status_c;
+char * lat_c;
+char * lat_dir_c;
+char * lon_c;
+char * lon_dir_c;
+char * cog_c;
+char * sog_c;
+char * date_c;
+char * mag_var_c;
+char * mag_var_dir_c;
 
-struct RMC {
-char fix_time[];
-char nav_rec_warn;
-char lat[];
-char lon[];
-char sog[];
-char cog[];
-char date_of_fix[];
-char mag_var[];
-char mag_var_dir;
-char checksum[2];
+namespace RCM_ELEMENTS {
+const uint8_t UTC = 2;
+const uint8_t STATUS = 3;
+const uint8_t LAT = 4;
+const uint8_t LAT_DIR = 5;
+const uint8_t LON = 6;
+const uint8_t LON_DIR = 7;
+const uint8_t SOG = 8;
+const uint8_t COG = 9;
+const uint8_t DATE = 10;
+const uint8_t MAG_VAR = 11;
+const uint8_t MAG_VAR_DIR = 12;
 };
 
 void setup() {
@@ -84,123 +97,152 @@ CRC = checksum(nmea);
 
 if (CRC == CRCin) {
 
-char * tok;
-tok = strtok(nmea, ",");
-
-if (strcmp(tok,"GNRMC") == 0){
-
-char * utc_c = strtok(NULL,",");
-char * status_c = strtok(NULL,",");
-char * lat_c = strtok(NULL,",");
-char * lat_dir_c = strtok(NULL,",");
-char * lon_c = strtok(NULL,",");
-char * lon_dir_c = strtok(NULL,",");
-char * sog_c = strtok(NULL,",");
-char * cog_c = strtok(NULL,",");
-char * date_c = strtok(NULL,",");
-char * mag_var_c = strtok(NULL,",");
-
-
-int utc = atoi(utc_c);
+Serial.println(nmea);
 
 
 
-char lat_deg_c[3];
-strncpy(lat_deg_c,lat_c,2);
-lat_deg_c[2] = '\0';
-float lat_deg = atof(lat_deg_c);
+uint8_t i = 0;
+uint8_t n_comma = 0;
+uint8_t dc = 0;
+bool is_empty[20];
 
+while (nmea[i] != '\0'){
+if (nmea[i] == ',') {
+n_comma++;
+is_empty[n_comma] = false;
 
-
-char lat_min_c[9];
-strcpy(lat_min_c, lat_c+=2);
-
-float lat_min = atof(lat_min_c);
-
-
-
-lat_deg = lat_deg + (lat_min/60.f);
-
-float lat = toRad(lat_deg);
-
-
-
-Serial.println(lon_c);
-char lon_deg_c[4];
-strncpy(lon_deg_c,lon_c,3);
-lon_deg_c[3] = '\0';
-float lon_deg = atof(lon_deg_c);
-
-
-char lon_min_c[9];
-strcpy(lon_min_c, lon_c+=3);
-float lon_min = atof(lon_min_c);
-
-
-lon_deg = lon_deg + (lon_min / 60.f);
-Serial.println(lon_deg,6);
-float lon = toRad(lon_deg);
-Serial.println(lon,6);
+if (nmea[i-1] == ',') {
+dc++;
+is_empty[n_comma] = true;
+}
+}
+i++;
 }
 
 
 
 
 
+char * tok;
+tok = strtok(nmea, ",");
+
+if (strcmp(tok,"GNRMC") == 0){
 
 
+for (uint8_t element = 2; element <= n_comma; element++) {
+if (is_empty[element] == true) { continue; }
+
+switch (element)
+{
+default:
+break;
+
+case RCM_ELEMENTS::UTC:
+utc_c = strtok(NULL,",");
+utc = atoi(utc_c);
+uint8_t second;
+uint8_t minute;
+uint8_t hour;
+
+second = utc % 100;
+minute = (uint8_t)((utc % 10000 - second)/100);
+hour = (uint8_t)((utc - minute  - second)/10000);
+break;
+
+case RCM_ELEMENTS::STATUS:
+status_c = strtok(NULL,",");
+break;
+
+case RCM_ELEMENTS::LAT:
+lat_c = strtok(NULL,",");
+
+char lat_deg_c[3];
+strncpy(lat_deg_c,lat_c,2);
+lat_deg_c[2] = '\0';
+float lat_deg;
+lat_deg = atof(lat_deg_c);
 
 
+char lat_min_c[9];
+strcpy(lat_min_c, lat_c+=2);
+float lat_min;
+lat_min = atof(lat_min_c);
 
 
+lat_deg = lat_deg + (lat_min/60.f);
+float lat;
+lat = toRad(lat_deg);
+Serial.print("LAT: "); Serial.println(lat,6);
+break;
+
+case RCM_ELEMENTS::LAT_DIR:
+lat_dir_c = strtok(NULL,",");
+break;
+
+case RCM_ELEMENTS::LON:
+lon_c = strtok(NULL,",");
+
+char lon_deg_c[4];
+strncpy(lon_deg_c,lon_c,3);
+lon_deg_c[3] = '\0';
+float lon_deg;
+lon_deg = atof(lon_deg_c);
 
 
+char lon_min_c[9];
+strcpy(lon_min_c, lon_c+=3);
+float lon_min;
+lon_min = atof(lon_min_c);
 
 
+lon_deg = lon_deg + (lon_min / 60.f);
+float lon;
+lon = toRad(lon_deg);
+break;
 
+case RCM_ELEMENTS::LON_DIR:
+lon_dir_c = strtok(NULL,",");
+break;
 
+case RCM_ELEMENTS::SOG:
+sog_c = strtok(NULL,",");
+float sog_knots;
+sog_knots = atof(sog_c);
+float sog_ms;
+sog_ms = sog_knots*0.514444f;
+break;
 
+case RCM_ELEMENTS::COG:
+cog_c = strtok(NULL,",");
+float cog;
+cog = atof(cog_c);
+break;
 
+case RCM_ELEMENTS::DATE:
+date_c = strtok(NULL,",");
+int date;
+uint8_t day;
+uint8_t month;
+uint8_t year;
 
+date = atoi(date_c);
+year = date % 100;
+month = (uint8_t)((date % 10000 - year)/100);
+day = (uint8_t)((date - month - year)/10000);
+break;
 
+case RCM_ELEMENTS::MAG_VAR:
+mag_var_c = strtok(NULL,",");
+float mag_var;
+mag_var = atof(mag_var_c);
+break;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+case RCM_ELEMENTS::MAG_VAR_DIR:
+mag_var_dir_c = strtok(NULL,",");
+break;
+}
+}
+}
 }
 
 }

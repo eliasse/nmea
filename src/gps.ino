@@ -26,18 +26,31 @@ enum M_TYPES {
   VTG
 };
   
+int utc;
+char * utc_c;
+char * status_c;
+char * lat_c;
+char * lat_dir_c;
+char * lon_c;
+char * lon_dir_c;
+char * cog_c;
+char * sog_c;
+char * date_c;
+char * mag_var_c;
+char * mag_var_dir_c;
 
-struct RMC {
-  char fix_time[];
-  char nav_rec_warn; // Navigation receiver warning
-  char lat[]; // 
-  char lon[];
-  char sog[]; // speed over ground knots
-  char cog[]; // course [deg]
-  char date_of_fix[]; // ddmmyy
-  char mag_var[];     // magnetic variation
-  char mag_var_dir;   // direction of magnetic variation
-  char checksum[2];  
+namespace RCM_ELEMENTS {
+    const uint8_t UTC = 2;
+    const uint8_t STATUS = 3;
+    const uint8_t LAT = 4;
+    const uint8_t LAT_DIR = 5;
+    const uint8_t LON = 6;
+    const uint8_t LON_DIR = 7;
+    const uint8_t SOG = 8;
+    const uint8_t COG = 9;
+    const uint8_t DATE = 10;
+    const uint8_t MAG_VAR = 11;
+    const uint8_t MAG_VAR_DIR = 12;
 };
 
 void setup() {
@@ -72,128 +85,157 @@ void loop() {
     // Decode the message only if the checksum matches
     if (CRC == CRCin) {
 
+      Serial.println(nmea);
+
+      // Count comma's 
+      // Count double-occurrances and determine empty spots
+      uint8_t i = 0;
+      uint8_t n_comma = 0; // Number of commas found (thus the number of elements)
+      uint8_t dc = 0;      // Number of double-commas (= number of empty elements)
+      bool is_empty[20];
+      
+      while (nmea[i] != '\0'){
+	if (nmea[i] == ',') {
+	  n_comma++;
+	  is_empty[n_comma] = false; // Just to make sure the bool is initialized
+
+	  if (nmea[i-1] == ',') { 
+	    dc++; 
+	    is_empty[n_comma] = true;
+	  }
+	}
+	i++;
+      }
+      
+      //Serial.print("n_comma: "); Serial.println(n_comma);
+      //Serial.print("empties: "); Serial.println(dc);
+	
+
       char * tok;
       tok = strtok(nmea, ",");
-
+      
       if (strcmp(tok,"GNRMC") == 0){
-	// Extract elements
-	char * utc_c = strtok(NULL,",");
-	char * status_c = strtok(NULL,",");
-	char * lat_c = strtok(NULL,",");  // ddmm.mmm
-	char * lat_dir_c = strtok(NULL,","); // N/S (north/south)
-	char * lon_c = strtok(NULL,",");  // dddmm.mmm
-	char * lon_dir_c = strtok(NULL,","); // E/W (east/west)
-	char * sog_c = strtok(NULL,","); // Knots
-	char * cog_c = strtok(NULL,","); // degrees
-	char * date_c = strtok(NULL,","); // ddmmyy
-	char * mag_var_c = strtok(NULL,","); // Magnetic deviation
+	
+        // First element to extract is 2 (UTC)
+	for (uint8_t element = 2; element <= n_comma; element++) {
+	  if (is_empty[element] == true) { continue; }
+	  
+	  switch (element) 
+	    {
+	    default:
+	      break;
+	      
+	    case RCM_ELEMENTS::UTC:
+	      utc_c = strtok(NULL,",");
+	      utc = atoi(utc_c);
+	      uint8_t second;
+	      uint8_t minute;
+	      uint8_t hour;
+	      
+	      second = utc % 100;
+	      minute = (uint8_t)((utc % 10000 - second)/100);
+	      hour = (uint8_t)((utc - minute  - second)/10000);
+	      break;
+	      
+	    case RCM_ELEMENTS::STATUS:
+	      status_c = strtok(NULL,",");
+	      break;
+	      
+	    case RCM_ELEMENTS::LAT:
+	      lat_c = strtok(NULL,",");  // ddmm.mmm
+	      // Latitude degrees into float
+	      char lat_deg_c[3];
+	      strncpy(lat_deg_c,lat_c,2);
+	      lat_deg_c[2] = '\0';
+	      float lat_deg;
+	      lat_deg = atof(lat_deg_c);
+	
+	      // Latitude minutes into float
+	      char lat_min_c[9];
+	      strcpy(lat_min_c, lat_c+=2);
+	      float lat_min;
+	      lat_min = atof(lat_min_c);
 
-	// Convert data to numerical values
-	int utc = atoi(utc_c);
-	
-	// Latitude degrees
-	//Serial.println(lat_c);
-	char lat_deg_c[3];
-	strncpy(lat_deg_c,lat_c,2);
-	lat_deg_c[2] = '\0';
-	float lat_deg = atof(lat_deg_c);
-	//Serial.println(lat_deg);
-	
-	// Latitude minutes
-	char lat_min_c[9];
-        strcpy(lat_min_c, lat_c+=2);
-	//Serial.println(lat_min_c);
-	float lat_min = atof(lat_min_c);
-	//Serial.println(lat_min,5);
+	      // Convert Latitude position to radians
+	      lat_deg = lat_deg + (lat_min/60.f);
+	      float lat;
+	      lat = toRad(lat_deg);
+	      Serial.print("LAT: "); Serial.println(lat,6);	      
+	      break;
 
-	// Convert Latitude position to radians
-	lat_deg = lat_deg + (lat_min/60.f);
-	//Serial.println(lat_deg,4);
-	float lat = toRad(lat_deg);
-	//Serial.println(lat,6);
+	    case RCM_ELEMENTS::LAT_DIR:
+	      lat_dir_c = strtok(NULL,","); // N/S (north/south)
+	      break;
 
-	// Longitude
-	Serial.println(lon_c);
-	char lon_deg_c[4];
-	strncpy(lon_deg_c,lon_c,3);
-	lon_deg_c[3] = '\0';
-	float lon_deg = atof(lon_deg_c);
+	    case RCM_ELEMENTS::LON:
+	      lon_c = strtok(NULL,",");  // dddmm.mmm
+	      // Longitude degrees into float
+	      char lon_deg_c[4];
+	      strncpy(lon_deg_c,lon_c,3);
+	      lon_deg_c[3] = '\0';
+	      float lon_deg;
+	      lon_deg = atof(lon_deg_c);
 	
-	// Longitude minutes
-	char lon_min_c[9];
-	strcpy(lon_min_c, lon_c+=3);
-	float lon_min = atof(lon_min_c);
+	      // Longitude minutes into float
+	      char lon_min_c[9];
+	      strcpy(lon_min_c, lon_c+=3);
+	      float lon_min;
+	      lon_min = atof(lon_min_c);
 	
-	// Sum up and convert longitude into radians
-	lon_deg = lon_deg + (lon_min / 60.f);
-	Serial.println(lon_deg,6);
-	float lon = toRad(lon_deg);
-	Serial.println(lon,6);
-      }
-      /*
-      while (tok != NULL)
-	{
-	  Serial.println(tok);
-	  tok = strtok(NULL,",");
+	      // Sum up and convert longitude into radians
+	      lon_deg = lon_deg + (lon_min / 60.f);
+	      float lon;
+	      lon = toRad(lon_deg);
+	      break;
+
+	    case RCM_ELEMENTS::LON_DIR:
+	      lon_dir_c = strtok(NULL,","); // E/W (east/west)
+	      break;
+
+	    case RCM_ELEMENTS::SOG: // Speed Over Ground
+	      sog_c = strtok(NULL,",");
+	      float sog_knots;
+	      sog_knots = atof(sog_c);
+	      float sog_ms;
+	      sog_ms = sog_knots*0.514444f;
+	      break;
+
+	    case RCM_ELEMENTS::COG: // Course Over Ground
+	      cog_c = strtok(NULL,","); // degrees
+	      float cog;
+	      cog = atof(cog_c);
+	      break;
+
+	    case RCM_ELEMENTS::DATE:
+	      date_c = strtok(NULL,","); // ddmmyy
+	      int date;
+	      uint8_t day;
+	      uint8_t month;
+	      uint8_t year;
+	      
+	      date = atoi(date_c);
+	      year = date % 100;
+	      month = (uint8_t)((date % 10000 - year)/100);
+	      day = (uint8_t)((date - month - year)/10000);
+	      break;
+
+	    case RCM_ELEMENTS::MAG_VAR:
+	      mag_var_c = strtok(NULL,","); // Magnetic variation
+	      float mag_var;
+	      mag_var = atof(mag_var_c);
+	      break;
+
+	    case RCM_ELEMENTS::MAG_VAR_DIR:
+	      mag_var_dir_c = strtok(NULL,",");
+	      break;
+	    }
 	}
-      */
-      
-      /*      uint8_t csr = 0; // A "cursor" to keep track of the current location
-      // Get the message Talker ID
-      char m_talkerID[3];
-      m_talkerID[0] = nmea[csr++]; // csr is incremented after the access
-      m_talkerID[1] = nmea[csr++];
-      m_talkerID[2] = '\0';
-      // Get the message Type
-      char m_type[4];
-      m_type[0] = nmea[csr++];
-      m_type[1] = nmea[csr++];
-      m_type[2] = nmea[csr++];
-      m_type[3] = '\0';
-      
-      //      Serial.println(m_talkerID);
-      //Serial.println(m_type);
-
-      if (strcmp(m_type, "GSV") == 0) {
-	 
       }
-      else if (strcmp(m_type, "GSA") == 0) {
-	 
-      }
-      else if (strcmp(m_type, "GLL") == 0) {
-	 
-      }
-      else if (strcmp(m_type, "GGA") == 0) {
-	 
-      }
-      else if (strcmp(m_type, "RMC") == 0) {
-	/*csr++;
-	char utc_time[7];
-	utc_time[6] = '\0';
-	uint8_t u = 0;
-
-	do {
-	  utc_time[u++] = nmea[csr++];
-	} while(nmea[csr] != ',');
-
-	Serial.print("UTC: ");
-	Serial.println(utc_time);
-	}
-
-
-      else if (strcmp(m_type, "VTG") == 0) {
-	 
-      }
-      */
-      //Serial.print("CRCi: "); Serial.println(CRCin,HEX);
-      //Serial.print("CRCc: "); Serial.println(CRC,HEX);
-      //Serial.print("Bytes: "); Serial.println(bytes_read);    
-      //Serial.print(nmea);
     }
     
   }
 
-  delay(500);
+    delay(500);
 }
 
 int checksum(char *s) {
