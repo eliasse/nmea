@@ -54,8 +54,6 @@ void NMEA::update(void) {
     // Decode the message only if the checksum matches
     if (CRC == CRCin) {
 
-      Serial.println(nmea);
-
       // Count comma's 
       // Count double-occurrances and determine empty spots
       uint8_t i = 0;
@@ -127,8 +125,6 @@ void NMEA::decode_VTG(char * tok, uint8_t n_fields, bool is_empty[])
   for (uint8_t element = 2; element <= n_fields; element++)
     {
       if (is_empty[element] == true) { continue; }
-
-      Serial.println(element);
 
       switch (element)
 	{
