@@ -4,11 +4,11 @@
 NMEA gps;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   HardwareSerial *gps_port;
   gps_port = &Serial2;
-  gps.begin(gps_port, 9600);
+  gps.begin(gps_port, 230400);
   delay(500);
 }
 
