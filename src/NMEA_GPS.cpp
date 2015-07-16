@@ -36,6 +36,7 @@ void NMEA_GPS::update(void) {
 
     do { // Find a starting character
       buf = port->read();
+      // if ((buf == '\n') || (buf == '\cr')) return;
     } while (buf != '$');
 
     // Read until the end of the NMEA sentence
@@ -86,6 +87,7 @@ void NMEA_GPS::update(void) {
 	  if (rmc == 0) { // Allocate memory if not already done
 	    rmc_str = new(RMC_STRINGS);
 	    rmc     = new(RMC);
+	    rmc->utc = 0;
 	  }
 	  decode_RMC(tok, n_fields, is_empty);
 	}
@@ -95,6 +97,7 @@ void NMEA_GPS::update(void) {
 	  if (gll == 0) {
 	    gll_str = new(GLL_STRINGS);
 	    gll     = new(GLL);
+	    gll->utc = 0;
 	  }
 	  decode_GLL(tok, n_fields, is_empty);
 	}      
@@ -104,6 +107,8 @@ void NMEA_GPS::update(void) {
 	  if (gga == 0) {
 	    gga_str = new (GGA_STRINGS);
 	    gga     = new (GGA);
+	    gga->utc = 0;
+	    gga->fix_quality = 0;
 	  }
 	  decode_GGA(tok, n_fields, is_empty);
 	}
@@ -182,6 +187,7 @@ void NMEA_GPS::decode_GGA(char * tok, uint8_t n_fields, bool is_empty[])
 	default:
 	  break;
 	case GGA_ELEMENTS::UTC:
+	  float tmp_utc;
 	  gga_str->utc = strtok(NULL,",");
 	  gga->utc     = atoi(gga_str->utc);
 	  gga->second  = gga->utc % 100;
@@ -214,7 +220,10 @@ void NMEA_GPS::decode_GGA(char * tok, uint8_t n_fields, bool is_empty[])
 	  break;
 	case GGA_ELEMENTS::FIX_QUALITY:
 	  gga_str->fix_quality = strtok(NULL,",");
-	  gga->fix_quality = atoi(gga_str->fix_quality);
+	  if (*gga_str->fix_quality == '0') {
+	    gga->fix_quality = 0; }
+	  else {
+	    gga->fix_quality = atoi(gga_str->fix_quality); }
 	  break;
 	case GGA_ELEMENTS::NUMBER_OF_SATELLITES:
 	  gga_str->n_sats = strtok(NULL,",");
