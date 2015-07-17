@@ -35,6 +35,7 @@ void NMEA_GPS::update(void) {
   while (port->available()){
 
     do { // Find a starting character
+      if (!port->available()) return;
       buf = port->read();
       // if ((buf == '\n') || (buf == '\cr')) return;
     } while (buf != '$');
